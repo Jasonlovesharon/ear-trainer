@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="练耳">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>练耳训练 v11</title>
+<style>
+  :root{
+    --bg:#0f1420; --card:#1a2233; --card2:#222d42; --line:#2c3a52;
+    --txt:#e8eefc; --dim:#9fb0cc; --blue:#4f8cff; --green:#33c98a;
+    --red:#ff5d6c; --amber:#ffbf47;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans CJK SC",sans-serif;line-height:1.55;padding-bottom:40px}
+  header{padding:16px 16px 8px}
+  h1{font-size:19px;margin:0}
+  .sub{color:var(--dim);font-size:12.5px;margin-top:3px}
+  nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 12px;position:sticky;top:0;background:rgba(15,20,32,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:5}
+  nav.tabs button{flex:0 0 auto;background:var(--card);color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:13.5px;white-space:nowrap}
+  nav.tabs button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  main{padding:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:13px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .row.wrap{flex-wrap:wrap}
+  .muted{color:var(--dim);font-size:12.5px}
+  .big{font-size:15.5px;font-weight:600}
+  button{cursor:pointer;font-family:inherit}
+  .btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:14.5px;font-weight:600}
+  .btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
+  .btn:disabled{opacity:.45}
+  .opts{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:12px}
+  .opt{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:11px;padding:14px 8px;font-size:15px;font-weight:600}
+  .opt:disabled{cursor:default}
+  .opt.ok{background:rgba(51,201,138,.2);border-color:var(--green);color:#8ff0c0}
+  .opt.no{background:rgba(255,93,108,.18);border-color:var(--red);color:#ffb0b8}
+  .prog{height:7px;background:var(--card2);border-radius:99px;overflow:hidden;margin:9px 0}
+  .prog>i{display:block;height:100%;background:var(--blue);width:0;transition:width .2s}
+  .tag{font-size:12px;color:var(--dim);background:var(--card2);border-radius:6px;padding:2px 8px}
+  .fb{margin-top:11px;font-size:14px;min-height:20px}
+  .fb.ok{color:#7fe6b6}.fb.no{color:#ff9aa5}
+  textarea{width:100%;height:200px;background:#0c111b;color:#d8e4fb;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace;line-height:1.5}
+  select{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:14px;font-family:inherit;width:100%}
+  .field{margin-bottom:11px}
+  .field label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:5px}
+  .fret-wrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px;padding:8px}
+  .fb-grid{display:grid;grid-template-columns:26px repeat(13,40px);gap:0}
+  .fb-cell{height:32px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid rgba(44,58,82,.4);font-size:11px;color:var(--dim)}
+  .fb-cell.hd{color:#64789b;font-size:10px;border:none;height:20px}
+  .fb-cell.lbl{color:#8fa3c4;font-weight:700;border:none}
+  .dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+  .dot.t{background:var(--blue);color:#fff}
+  .dot.g{background:var(--green);color:#06120c}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎧 练耳训练 <span class="muted" style="font-weight:400;font-size:12px">v11</span></h1>
+  <div class="sub" id="hd">首调（相对听觉）路线 · 8 阶段阶梯作业</div>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<main id="app"></main>
+
+<script>
+/* ============ 工具函数 ============ */
+const $ = (s,r=document)=>r.querySelector(s);
+const rnd = n=>Math.floor(Math.random()*n);
+const pick = a=>a[rnd(a.length)];
+const uniq = a=>[...new Set(a)];
+const SOL = ['do','re','mi','fa','sol','la','si'];
+const PC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const MAJOR = [0,2,4,5,7,9,11];
+const IVS = {1:'小二',2:'大二',3:'小三',4:'大三',5:'纯四',6:'三全音',7:'纯五',8:'小六',9:'大六',10:'小七',11:'大七',12:'纯八'};
+const CHORDS = [
+  {name:'大三',off:[0,4,7]},
+  {name:'小三',off:[0,3,7]},
+  {name:'增三',off:[0,4,8]},
+  {name:'减三',off:[0,3,6]}
+];
+const PROG = [
+  {name:'I–IV–V–I', p:[1,4,5,1]},
+  {name:'I–V–vi–IV', p:[1,5,6,4]},
+  {name:'I–vi–IV–V', p:[1,6,4,5]},
+  {name:'ii–V–I',   p:[2,5,1]},
+  {name:'I–IV–I–V', p:[1,4,1,5]},
+  {name:'vi–IV–I–V', p:[6,4,1,5]},
+  {name:'I–iii–IV–V', p:[1,3,4,5]},
+  {name:'I–vi–ii–V', p:[1,6,2,5]}
+];
+
+/* ============ 音程参考曲（点 ▶ 播放"那首歌里的这一句"） ============ */
+/* mel = 该句旋律（相对第一个音的半音偏移）；没写 mel 的曲子，点击时播放该音程本身 */
+const REF = {
+  1:  [{s:'《致爱丽丝》', h:'开头两音（下行）'}, {s:'《长江之歌》', h:'「你从雪山走来」'}],
+  2:  [{s:'《生日快乐》', h:'第二、三音', mel:[0,0,2,0,5,4]}, {s:'《两只老虎》', h:'「两只」'}],
+  3:  [{s:'《粉刷匠》', h:'「我是一个粉刷匠」下行', mel:[0,-3,0,-3,0,-3,-7]}, {s:'《莫斯科郊外的晚上》', h:'「深夜花园里四处静悄悄」'}],
+  4:  [{s:'门铃声「叮咚」', h:'就是大三度'}, {s:'《Oh When the Saints》', h:'「Oh–when」'}],
+  5:  [{s:'《国歌》', h:'「起来」两字', mel:[0,5]}, {s:'《采蘑菇的小姑娘》', h:'「采蘑菇的小姑娘」'}],
+  6:  [{s:'《辛普森一家》主题曲', h:'开头两音', mel:[0,6]}],
+  7:  [{s:'《小星星》', h:'「一闪一闪」', mel:[0,0,7,7,9,9,7]}, {s:'《星球大战》主题曲', h:'开头', mel:[0,7]}],
+  8:  [{s:'《死了都要爱》', h:'「死了」两字'}],
+  9:  [{s:'My Bonnie Lies Over the Ocean', h:'开口「My Bon–nie」', mel:[0,9,7,5,7,5]}, {s:'《铃儿响叮当》', h:'「穿过大风雪」那一跳'}, {s:'《童话》', h:'「我开始慌了」的 5→3'}],
+  10: [{s:'Somewhere（西区故事）', h:'「There\'s a place for us」', mel:[0,10,9,5,2]}, {s:'《可惜不是你》', h:'「可惜」两字'}, {s:'《好久不见》', h:'「我来到」'}],
+  11: [{s:'Take On Me', h:'开头两音（合成器）', mel:[0,11]}],
+  12: [{s:'Somewhere Over the Rainbow', h:'「Some–where」开头', mel:[0,12]}, {s:'《我的太阳》', h:'开头大跳'}]
+};
+function playRefInterval(semis, base){
+  const b = (typeof base==='number') ? base : 60;
+  playNote(b, 0, 0.7, 0.22); playNote(b+semis, 0.7, 0.95, 0.22);
+}
+function playMel(mel, base){
+  const b = (typeof base==='number') ? base : 60;
+  mel.forEach((off,i)=>playNote(b+off, i*0.42, 0.5, 0.22));
+}
+
+/* ============ 音频引擎 ============ */
+let actx = null;
+function ac(){
+  if(!actx){ actx = new (window.AudioContext||window.webkitAudioContext)(); }
+  if(actx.state==='suspended'){ actx.resume(); }
+  return actx;
+}
+function midiFreq(m){ return 440*Math.pow(2,(m-69)/12); }
+function playNote(m, when=0, dur=0.9, vol=0.22, type='triangle'){
+  const c = ac(); const t = c.currentTime + when;
+  const o = c.createOscillator(); const g = c.createGain();
+  o.type = type; o.frequency.value = midiFreq(m);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t+dur+0.06);
+}
+function playChord(ms, when=0, dur=1.3, vol=0.16){
+  ms.forEach((m,i)=>playNote(m, when+i*0.012, dur, vol, 'sine'));
+}
+function arp(ms, when=0, step=0.18, vol=0.2){
+  ms.forEach((m,i)=>playNote(m, when+i*step, 0.5, vol, 'triangle'));
+}
+function tonicMidi(pc){ let m = 48+pc; while(m<55) m+=12; return m; }
+function diaTriad(T,d){
+  const i = d-1;
+  const r = MAJOR[i];
+  const th = MAJOR[(i+2)%7] + ((i+2)>=7?12:0);
+  const f = MAJOR[(i+4)%7] + ((i+4)>=7?12:0);
+  return [T+r, T+th, T+f];
+}
+
+/* ============ 阶段配置 ============ */
+const STAGES = [
+ {n:1, tag:'级数打地基', tasks:[
+   {mode:'degree', cfg:{tonic:'fixed', degrees:[1,3,5]}, count:20, target:90, label:'级数 · 固定C · 1/3/5'},
+   {mode:'interval', cfg:{semis:[3,9,10]}, count:20, target:90, label:'音程 · 小三/大六/小七'}
+ ]},
+ {n:2, tag:'级数扩展', tasks:[
+   {mode:'degree', cfg:{tonic:'fixed', degrees:[1,2,3,5,6]}, count:20, target:90, label:'级数 · 固定C · 常用'},
+   {mode:'interval', cfg:{semis:[3,9,10]}, count:20, target:90, label:'音程 · 小三/大六/小七'}
+ ]},
+ {n:3, tag:'级数通+和弦', tasks:[
+   {mode:'degree', cfg:{tonic:'fixed', degrees:[1,2,3,4,5,6,7]}, count:20, target:90, label:'级数 · 固定C · 全部1~7'},
+   {mode:'chord', cfg:{types:['大三','小三','增三','减三']}, count:20, target:90, label:'和弦 · 三和弦(含增减)'}
+ ]},
+ {n:4, tag:'上随机调', tasks:[
+   {mode:'degree', cfg:{tonic:'random', degrees:[1,2,3,4,5,6,7]}, count:20, target:85, label:'级数 · 全部1~7 · 随机调'},
+   {mode:'interval', cfg:{semis:[2,3,4,5,7,9,10,12]}, count:20, target:85, label:'音程 · 常用'}
+ ]},
+ {n:5, tag:'进行', tasks:[
+   {mode:'prog', cfg:{patterns:PROG.slice(0,8), tonic:'random'}, count:15, target:80, label:'进行 · 8种 · 随机调'},
+   {mode:'degree', cfg:{tonic:'random', degrees:[1,2,3,4,5,6,7]}, count:20, target:85, label:'级数 · 随机调'}
+ ]},
+ {n:6, tag:'耳手连线', tasks:[
+   {mode:'fret', cfg:{tonic:'fixed'}, count:10, target:85, label:'找音 · 固定C'},
+   {mode:'degree', cfg:{tonic:'random', degrees:[1,2,3,4,5,6,7]}, count:20, target:85, label:'级数 · 随机调'}
+ ]},
+ {n:7, tag:'找音进阶', tasks:[
+   {mode:'fret', cfg:{tonic:'random'}, count:10, target:85, label:'找音 · 随机调'},
+   {mode:'interval', cfg:{semis:[1,2,3,4,5,6,7,8,9,10,11,12]}, count:20, target:85, label:'音程 · 全部'}
+ ]},
+ {n:8, tag:'综合通关', tasks:[
+   {mode:'degree', cfg:{tonic:'random', degrees:[1,2,3,4,5,6,7]}, count:10, target:85, label:'级数 · 随机调'},
+   {mode:'interval', cfg:{semis:[2,3,4,5,7,9,10,12]}, count:10, target:85, label:'音程 · 常用'},
+   {mode:'chord', cfg:{types:['大三','小三','增三','减三']}, count:10, target:90, label:'和弦 · 三和弦'},
+   {mode:'prog', cfg:{patterns:PROG.slice(0,8), tonic:'random'}, count:10, target:80, label:'进行 · 8种'}
+ ]}
+];
+
+/* ============ 出题 ============ */
+function makeQ(task){
+  const m = task.mode, c = task.cfg||{};
+  if(m==='degree')   return qDegree(c);
+  if(m==='interval') return qInterval(c);
+  if(m==='chord')    return qChord(c);
+  if(m==='prog')     return qProg(c);
+  if(m==='fret')     return qFret(c);
+  return qDegree({tonic:'fixed',degrees:[1,2,3]});
+}
+function qDegree(c){
+  const degs = [...c.degrees].sort((a,b)=>a-b);
+  const pc = c.tonic==='random' ? rnd(12) : 0;
+  const T = tonicMidi(pc);
+  const d = pick(degs);
+  const tgt = T + MAJOR[d-1];
+  const play = ()=>{ arp([T,T+4,T+7],0,0.17,0.2); playNote(tgt, 0.8, 1.0, 0.24); };
+  const playOpt = (id)=>{ arp([T,T+4,T+7],0,0.17,0.2); playNote(T+MAJOR[id-1], 0.8, 1.0, 0.24); };
+  return {play, playOption:playOpt, options:degs.map(x=>({id:x,label:x+' · '+SOL[x-1]})), correct:d,
+    info: c.tonic==='random' ? '调：随机（先听主和弦『do mi sol』找回 do）' : '调：固定 C',
+    explain:'目标音是第 '+d+' 级（'+SOL[d-1]+'）'};
+}
+function qInterval(c){
+  const set = [...c.semis].sort((a,b)=>a-b);
+  const s = pick(set);
+  const base = 55 + rnd(8);
+  const play = ()=>{ playNote(base,0,0.7,0.22); playNote(base+s,0.7,0.9,0.22); };
+  const playOpt = (id)=>{ playNote(base,0,0.7,0.22); playNote(base+id,0.7,0.9,0.22); };
+  const refName = (REF[s] && REF[s][0]) ? ' · 想「'+REF[s][0].s+'」' : '';
+  return {play, playOption:playOpt, base, options:set.map(x=>({id:x,label:IVS[x]})), correct:s,
+    info:'音程 · 上行（先哼后选）',
+    explain:'这是一个「'+IVS[s]+'」（'+s+' 半音）'+refName};
+}
+function qChord(c){
+  const t = pick(c.types);
+  const def = CHORDS.find(x=>x.name===t);
+  const root = 55 + rnd(8);
+  const ms = def.off.map(o=>root+o);
+  const play = ()=>playChord(ms,0,1.4,0.16);
+  const playOpt = (id)=>{ const dd = CHORDS.find(x=>x.name===id); playChord(dd.off.map(o=>root+o),0,1.4,0.16); };
+  return {play, playOption:playOpt, options:c.types.map(x=>({id:x,label:x})), correct:t,
+    info:'和弦 · 三和弦',
+    explain:'这是一个「'+t+'和弦」'};
+}
+function qProg(c){
+  const p = pick(c.patterns);
+  const pc = c.tonic==='random' ? rnd(12) : 0;
+  const T = tonicMidi(pc);
+  const chords = p.p.map(d=>diaTriad(T,d));
+  const play = ()=>chords.forEach((ms,i)=>playChord(ms, i*1.05, 1.0, 0.15));
+  const playOpt = (id)=>{ const pp = c.patterns.find(x=>x.name===id); if(!pp)return; pp.p.map(d=>diaTriad(T,d)).forEach((ms,i)=>playChord(ms, i*1.05, 1.0, 0.15)); };
+  return {play, playOption:playOpt, options:c.patterns.map(x=>({id:x.name,label:x.name})), correct:p.name,
+    info: c.tonic==='random' ? '进行 · 随机调（先听主和弦找 do）' : '进行 · 固定C',
+    explain:'进行是「'+p.name+'」'};
+}
+function qFret(c){
+  const pc = c.tonic==='random' ? rnd(12) : 0;
+  const T = tonicMidi(pc);
+  const d = 1 + rnd(7);
+  const tgt = T + MAJOR[d-1];
+  const play = ()=>{ arp([T,T+4,T+7],0,0.17,0.2); playNote(tgt,0.8,1.0,0.24); };
+  const playOpt = (id)=>{ arp([T,T+4,T+7],0,0.17,0.2); playNote(T+MAJOR[id-1], 0.8, 1.0, 0.24); };
+  return {play, playOption:playOpt, options:[1,2,3,4,5,6,7].map(x=>({id:x,label:x+' · '+SOL[x-1]})), correct:d,
+    info:'调：主音 = '+PC[pc]+'（蓝点就是 do）· 听目标音是第几级',
+    explain:'这个音是第 '+d+' 级（'+SOL[d-1]+'）→ 指板上绿色就是它',
+    fret:{pc, tgtPc:(pc+MAJOR[d-1])%12}};
+}
+
+/* ============ 指板渲染 ============ */
+function renderFret(tonicPc, targetPc){
+  const open = [['E',64],['B',59],['G',55],['D',50],['A',45],['E',40]];
+  let h = '<div class="fret-wrap"><div class="fb-grid">';
+  h += '<div class="fb-cell hd"></div>';
+  for(let f=0; f<=12; f++) h += '<div class="fb-cell hd">'+f+'</div>';
+  open.forEach(([nm,om])=>{
+    h += '<div class="fb-cell lbl">'+nm+'</div>';
+    for(let f=0; f<=12; f++){
+      const pc = (om+f)%12;
+      let dot = '';
+      if(pc===tonicPc) dot = '<span class="dot t">1</span>';
+      else if(targetPc!=null && pc===targetPc) dot = '<span class="dot g"></span>';
+      h += '<div class="fb-cell">'+dot+'</div>';
+    }
+  });
+  h += '</div></div>';
+  return h;
+}
+
+/* ============ 状态 ============ */
+const TABS = [
+  {id:'work', t:'📅 作业'},
+  {id:'degree', t:'级数'},
+  {id:'interval', t:'音程'},
+  {id:'chord', t:'和弦'},
+  {id:'prog', t:'进行'},
+  {id:'fret', t:'找音'}
+];
+const app = {
+  tab: 'work',
+  session: null,       // 当前答题会话
+  work: null,          // 作业元信息 {stage, taskIdx, results, phase, report, advanced}
+  practice: {},        // 各自由练习的配置
+  stage: 2
+};
+function loadStage(){ try{ const v=parseInt(localStorage.getItem('et_stage')||'2',10); return (v>=1&&v<=8)?v:2; }catch(e){ return 2; } }
+function saveStage(n){ try{ localStorage.setItem('et_stage', String(n)); }catch(e){} }
+
+/* ============ 会话控制 ============ */
+function startSession(mode, cfg, count, target, label, practice){
+  app.session = {
+    mode, cfg, count, target, label, practice:!!practice,
+    qi:0, correct:0, wrong:[], chosen:null, phase:'asking', lastOk:null,
+    cur: makeQ({mode,cfg})
+  };
+  render();
+  setTimeout(playCur, 260);
+}
+function playCur(){ if(app.session && app.session.cur && app.session.cur.play) app.session.cur.play(); }
+
+function answer(chosenId){
+  const s = app.session;
+  if(!s || s.phase!=='asking') return;
+  const q = s.cur;
+  const ok = String(chosenId)===String(q.correct);
+  s.phase = 'answered';
+  s.chosen = chosenId;
+  s.lastOk = ok;
+  if(ok){ s.correct++; }
+  else {
+    const cl = q.options.find(o=>String(o.id)===String(q.correct));
+    s.wrong.push(cl ? cl.label : String(q.correct));
+  }
+  render();
+  if(ok){ setTimeout(advance, 900); }
+}
+function advance(){
+  const s = app.session;
+  if(!s) return;
+  s.qi++;
+  if(!s.practice && s.qi>=s.count){ finishTask(); return; }
+  s.cur = makeQ({mode:s.mode, cfg:s.cfg});
+  s.phase = 'asking'; s.chosen = null; s.lastOk = null;
+  render();
+  setTimeout(playCur, 260);
+}
+
+/* ============ 作业流程 ============ */
+function startWork(stageN){
+  app.stage = stageN;
+  saveStage(stageN);
+  app.work = {stage: STAGES[stageN-1], taskIdx:0, results:[], phase:'intro', report:'', advanced:false};
+  render();
+}
+function curTask(){ return app.work.stage.tasks[app.work.taskIdx]; }
+function beginTask(){
+  const t = curTask();
+  app.work.phase = 'quiz';
+  startSession(t.mode, t.cfg, t.count, t.target, t.label, false);
+}
+function finishTask(){
+  const s = app.session;
+  const t = curTask();
+  const pct = Math.round(s.correct/s.count*100);
+  app.work.results.push({label:t.label, correct:s.correct, total:s.count, target:t.target, met:pct>=t.target, wrong:s.wrong});
+  app.session = null;
+  if(app.work.taskIdx < app.work.stage.tasks.length-1){
+    app.work.taskIdx++;
+    app.work.phase = 'between';
+    render();
+  } else {
+    const all = app.work.results.every(r=>r.met);
+    if(all && app.work.stage.n < 8){
+      app.stage = app.work.stage.n + 1;
+      saveStage(app.stage);
+      app.work.advanced = true;
+    }
+    app.work.report = buildReport();
+    app.work.phase = 'report';
+    render();
+  }
+}
+function buildReport(){
+  const d = new Date();
+  const wd = ['日','一','二','三','四','五','六'][d.getDay()];
+  const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const st = app.work.stage, rs = app.work.results;
+  const L = [];
+  L.push('【练耳作业】'+ds+'（周'+wd+'） 第'+st.n+'阶段 · '+st.tag);
+  let C=0, T=0; const weak=[];
+  rs.forEach((r,i)=>{
+    C += r.correct; T += r.total;
+    const pct = Math.round(r.correct/r.total*100);
+    L.push('任务'+(i+1)+'｜'+r.label+'：'+r.correct+'/'+r.total+'（'+pct+'%）目标'+r.target+'% '+(r.met?'✅':'❌'));
+    if(r.wrong.length){ L.push('　 错在：'+uniq(r.wrong).join('、')); r.wrong.forEach(w=>weak.push(w)); }
+  });
+  L.push('合计：'+C+'/'+T+'（'+Math.round(C/T*100)+'%）');
+  if(weak.length) L.push('薄弱点：'+uniq(weak).join('、'));
+  if(rs.every(r=>r.met)){
+    if(st.n<8) L.push('🎉 全部达标！下次进入：第'+(st.n+1)+'阶段 · '+STAGES[st.n].tag);
+    else L.push('🏆 全部达标！已通关第 8 阶段（综合通关）！');
+  } else {
+    L.push('⚠️ 有任务未达标，本阶段再练一次。');
+  }
+  L.push('（请把这条发给我批改）');
+  return L.join('\n');
+}
+
+/* ============ 渲染 ============ */
+function renderTabs(){
+  $('#tabs').innerHTML = TABS.map(t=>
+    '<button class="'+(t.id===app.tab?'on':'')+'" data-tab="'+t.id+'">'+t.t+'</button>'
+  ).join('');
+  $('#hd').textContent = app.tab==='work'
+    ? ('当前：第 '+app.stage+' 阶段 · '+STAGES[app.stage-1].tag+' · 首调路线')
+    : '自由练习 · 首调路线';
+}
+function render(){ renderTabs(); $('#app').innerHTML = (app.tab==='work') ? renderWork() : renderPractice(app.tab); bind(); }
+
+function renderWork(){
+  if(!app.work) startWork(app.stage);
+  const w = app.work, st = w.stage;
+  if(w.phase==='quiz') return quizHtml();
+  if(w.phase==='between'){
+    const r = w.results[w.results.length-1];
+    const pct = Math.round(r.correct/r.total*100);
+    return card(
+      '<div class="big">任务'+w.results.length+' 完成</div>'+
+      '<div class="fb '+(r.met?'ok':'no')+'" style="margin-top:8px">'+r.label+'：'+r.correct+'/'+r.total+'（'+pct+'%）目标'+r.target+'% '+(r.met?'✅':'❌')+'</div>'+
+      '<button class="btn" id="nextTask" style="margin-top:14px;width:100%">下一个任务 ▶</button>'
+    );
+  }
+  if(w.phase==='report'){
+    return card('<div class="big">📋 今日作业完成 · 日报</div><div class="muted" style="margin:6px 0 10px">复制这段发给我批改</div><textarea id="rep" readonly>'+esc(w.report)+'</textarea><button class="btn" id="copyRep" style="margin-top:10px;width:100%">复制日报</button>')+
+      (w.advanced?card('<div class="big">🎉 已晋级</div><div class="fb ok" style="margin-top:8px">下一阶段：第'+st.n+1+'阶段 · '+STAGES[st.n].tag+'</div><button class="btn" id="goNext" style="margin-top:12px;width:100%">直接开始第 '+(st.n+1)+' 阶段</button>') : '')+
+      card('<button class="btn ghost" id="redo" style="width:100%">↻ 本阶段再来一次</button>');
+  }
+  // intro
+  let tasks = st.tasks.map((t,i)=>'<div class="row" style="margin-top:8px"><span>任务'+(i+1)+'</span><span class="muted">'+t.label+' · '+t.count+'题 · 目标'+t.target+'%</span></div>').join('');
+  let sel = '<select id="stageSel">'+STAGES.map(s=>'<option value="'+s.n+'" '+(s.n===app.stage?'selected':'')+'>第'+s.n+'阶段 · '+s.tag+'</option>').join('')+'</select>';
+  return card(
+    '<div class="big">第 '+st.n+' 阶段 · '+st.tag+'</div>'+
+    '<div class="muted" style="margin-top:4px">按阶段走，全部达标自动晋级。做完点「复制日报」发我批改。</div>'+
+    tasks+
+    '<button class="btn" id="startWork" style="margin-top:14px;width:100%">开始今日作业</button>'
+  )+card('<div class="field"><label>手动切换阶段（需要时用）</label>'+sel+'</div><button class="btn ghost" id="setStage" style="width:100%">切换</button>');
+}
+
+function quizHtml(){
+  const s = app.session, q = s.cur, done = s.phase==='answered';
+  const opts = q.options.map(o=>{
+    let cls = 'opt';
+    if(done){
+      if(String(o.id)===String(q.correct)) cls += ' ok';
+      else if(String(o.id)===String(s.chosen)) cls += ' no';
+    }
+    return '<button class="'+cls+'" data-id="'+o.id+'" '+(done?'disabled':'')+'>'+o.label+'</button>';
+  }).join('');
+  const audit = q.options.map(o=>'<button class="btn ghost" data-aud="'+o.id+'">🔊 '+o.label+'</button>').join('');
+  const refBlock = (typeof q.base==='number')
+    ? '<div class="muted" style="margin-top:14px">🎵 参考曲 · 点 ▶ 听「那首歌里的这一句」（用题目同一起始音）</div>' +
+      q.options.map(o=>{
+        const rs = REF[o.id]; if(!rs) return '';
+        return '<div class="muted" style="margin-top:9px"><b>'+IVS[o.id]+'</b></div>' +
+          rs.map((r,idx)=>'<button class="btn ghost" data-ref="'+o.id+'" data-midx="'+idx+'" style="width:100%;text-align:left;margin-top:5px;padding:9px 12px">▶ '+r.s+'<span class="muted">（'+r.h+'）</span></button>').join('');
+      }).join('')
+    : '';
+  const head = s.practice
+    ? '<span class="big">自由练习 · '+s.label+'</span><span class="tag">对 '+s.correct+' / 共 '+s.qi+(done?1:0)+'</span>'
+    : '<span class="big">任务 '+(app.work.taskIdx+1)+'/'+app.work.stage.tasks.length+' · 第 '+(s.qi+1)+'/'+s.count+' 题</span><span class="tag">正确 '+s.correct+'</span>';
+  const w = s.practice ? (s.count>900?0:(s.qi)/s.count*100) : (s.qi)/s.count*100;
+  const pctW = s.practice ? 0 : w;
+  return card(
+    '<div class="row">'+head+'</div>'+
+    '<div class="prog"><i style="width:'+(done?Math.min(100,(s.qi+1)/s.count*100):pctW)+'%"></i></div>'+
+    '<div class="muted">'+q.info+'</div>'+
+    '<div class="row" style="margin-top:8px"><button class="btn ghost" id="replay">🔁 重听</button><span class="muted">'+(done?(s.lastOk?'✅ 答对':'❌ 答错'):'听两遍，先哼后选')+'</span></div>'+
+    '<div class="opts">'+opts+'</div>'+
+    (done?('<div class="fb '+(s.lastOk?'ok':'no')+'">'+q.explain+'</div>'):'')+
+    (done?('<div class="muted" style="margin-top:12px">🔊 对比听 · 点一下试听每个选项（可反复点，慢慢对比）</div><div class="opts">'+audit+'</div>'):'')+
+    (done?refBlock:'')+
+    (done&&!s.lastOk?'<button class="btn" id="nextQ" style="margin-top:12px;width:100%">下一题 ▶</button>':'')+
+    (s.practice?'<button class="btn ghost" id="stopPrac" style="margin-top:12px;width:100%">结束练习</button>':'')
+  ) + (q.fret ? renderFret(q.fret.pc, done?q.fret.tgtPc:null) : '');
+}
+
+function renderPractice(tab){
+  const conf = app.practice[tab] || (app.practice[tab]={});
+  if(app.session && app.session.practice && app.session.mode===tab) return quizHtml();
+  let fields = '';
+  if(tab==='degree'){
+    fields = fld('调','<select id="p_tonic"><option value="fixed">固定 C</option><option value="random">随机调</option></select>')+
+      fld('级数范围','<select id="p_deg"><option value="13">1/3/5</option><option value="common">常用（1,2,3,5,6）</option><option value="all">全部 1~7</option></select>');
+  } else if(tab==='interval'){
+    fields = fld('难度','<select id="p_iv"><option value="basic">基础·上行</option><option value="common">常用</option><option value="focus">专攻：小三/大六/小七</option><option value="all">全部</option></select>');
+  } else if(tab==='chord'){
+    fields = fld('类型','<select id="p_ch"><option value="basic">大三 / 小三</option><option value="withAugDim">三和弦（含增、减）</option></select>');
+  } else if(tab==='prog'){
+    fields = fld('走向','<select id="p_pg"><option value="4">常见 4 种</option><option value="8">全部 8 种</option></select>')+
+      fld('调','<select id="p_pt"><option value="fixed">固定 C</option><option value="random">随机调</option></select>');
+  } else if(tab==='fret'){
+    fields = fld('调','<select id="p_ft"><option value="fixed">固定 C（主音=C）</option><option value="random">随机调</option></select>');
+  }
+  const tips = {degree:'听主和弦建立调，只听目标音是第几级。',interval:'先哼后选，感受两个音的距离。',chord:'听三和弦的色彩：大=明亮，小=柔和，增=悬，减=紧张。',prog:'先听主和弦找 do，再听每个和弦落在第几级。',fret:'蓝点是 do，先数级数，再看指板绿色位置。'};
+  return card('<div class="big">'+TABS.find(t=>t.id===tab).t+' · 自由练习</div><div class="muted" style="margin:6px 0 12px">'+tips[tab]+'</div>'+fields+'<button class="btn" id="startPrac" style="margin-top:4px;width:100%">开始练习</button>');
+}
+function fld(label,inner){ return '<div class="field"><label>'+label+'</label>'+inner+'</div>'; }
+function card(inner){ return '<div class="card">'+inner+'</div>'; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============ 事件 ============ */
+function bind(){
+  $('#tabs').querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{ ac(); app.session=null; app.tab=b.dataset.tab; render(); };
+  });
+  const g = id=>document.getElementById(id);
+  if(g('startWork')) g('startWork').onclick = ()=>{ ac(); beginTask(); };
+  if(g('nextTask'))  g('nextTask').onclick = ()=>{ ac(); beginTask(); };
+  if(g('redo'))      g('redo').onclick = ()=>{ ac(); startWork(app.work.stage.n); beginTask(); };
+  if(g('goNext'))    g('goNext').onclick = ()=>{ ac(); startWork(app.stage); };
+  if(g('setStage'))  g('setStage').onclick = ()=>{ ac(); const v=parseInt(g('stageSel').value,10); startWork(v); };
+  if(g('copyRep'))   g('copyRep').onclick = ()=>{ copyText(app.work.report, g('copyRep')); };
+  if(g('replay'))    g('replay').onclick = ()=>{ ac(); playCur(); };
+  if(g('nextQ'))     g('nextQ').onclick = ()=>{ ac(); advance(); };
+  if(g('stopPrac'))  g('stopPrac').onclick = ()=>{ app.session=null; render(); };
+  if(g('startPrac')) g('startPrac').onclick = ()=>{ ac(); startPractice(app.tab); };
+  $('#app').querySelectorAll('.opt').forEach(b=>{
+    b.onclick = ()=>{ ac(); answer(b.dataset.id); };
+  });
+  $('#app').querySelectorAll('[data-aud]').forEach(b=>{
+    b.onclick = ()=>{
+      ac();
+      const q = app.session && app.session.cur;
+      if(!q || !q.playOption) return;
+      const raw = b.dataset.aud;
+      const id = /^\d+$/.test(raw) ? Number(raw) : raw;
+      q.playOption(id);
+    };
+  });
+  $('#app').querySelectorAll('[data-ref]').forEach(b=>{
+    b.onclick = ()=>{
+      ac();
+      const q = app.session && app.session.cur;
+      if(!q) return;
+      const semis = Number(b.dataset.ref);
+      const idx = Number(b.dataset.midx || 0);
+      const r = (REF[semis] || [])[idx];
+      const base = (typeof q.base==='number') ? q.base : 60;
+      if(r && r.mel) playMel(r.mel, base);
+      else playRefInterval(semis, base);
+    };
+  });
+}
+function startPractice(tab){
+  const g = id=>document.getElementById(id);
+  let mode=tab, cfg={}, label='';
+  if(tab==='degree'){
+    cfg.tonic = g('p_tonic').value;
+    const dv = g('p_deg').value;
+    cfg.degrees = dv==='13'?[1,3,5] : dv==='common'?[1,2,3,5,6] : [1,2,3,4,5,6,7];
+    label = '级数 · '+(cfg.tonic==='random'?'随机调':'固定C')+' · '+dv;
+  } else if(tab==='interval'){
+    const iv = g('p_iv').value;
+    cfg.semis = iv==='basic'?[2,4,5,7,12] : iv==='common'?[2,3,4,5,7,9,10,12] : iv==='focus'?[3,9,10] : [1,2,3,4,5,6,7,8,9,10,11,12];
+    label = '音程 · '+iv;
+  } else if(tab==='chord'){
+    const cv = g('p_ch').value;
+    cfg.types = cv==='basic'?['大三','小三'] : ['大三','小三','增三','减三'];
+    label = '和弦 · '+cv;
+  } else if(tab==='prog'){
+    const n = g('p_pg').value==='4'?4:8;
+    cfg.patterns = PROG.slice(0,n);
+    cfg.tonic = g('p_pt').value;
+    label = '进行 · '+n+'种 · '+(cfg.tonic==='random'?'随机调':'固定C');
+  } else if(tab==='fret'){
+    cfg.tonic = g('p_ft').value;
+    label = '找音 · '+(cfg.tonic==='random'?'随机调':'固定C');
+  }
+  startSession(mode, cfg, 9999, 0, label, true);
+}
+async function copyText(txt, btn){
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){
+    const ta = $('#rep'); if(ta){ ta.removeAttribute('readonly'); ta.select(); try{document.execCommand('copy');}catch(_){} ta.setAttribute('readonly',''); }
+  }
+  if(btn){ const o = btn.textContent; btn.textContent='✅ 已复制'; setTimeout(()=>btn.textContent=o, 1400); }
+}
+
+/* ============ 启动 ============ */
+app.stage = loadStage();
+renderTabs();
+app.work = null;
+render();
+</script>
+</body>
+</html>
