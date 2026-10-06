@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="练耳">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>练耳训练 v15</title>
+<title>练耳训练 v16</title>
 <style>
   :root{
     --bg:#0f1420; --card:#1a2233; --card2:#222d42; --line:#2c3a52;
@@ -58,7 +58,7 @@
 </head>
 <body>
 <header>
-  <h1>🎧 练耳训练 <span class="muted" style="font-weight:400;font-size:12px">v15</span></h1>
+  <h1>🎧 练耳训练 <span class="muted" style="font-weight:400;font-size:12px">v16</span></h1>
   <div class="sub" id="hd">首调（相对听觉）路线 · 8 阶段阶梯作业</div>
 </header>
 <nav class="tabs" id="tabs"></nav>
@@ -250,8 +250,11 @@ function qChord(c){
   const def = CHORDS.find(x=>x.name===t);
   const root = 55 + rnd(8);
   const ms = def.off.map(o=>root+o);
-  const play = ()=>playChord(ms,0,1.7,0.3);
-  const playOpt = (id)=>{ const dd = CHORDS.find(x=>x.name===id); playChord(dd.off.map(o=>root+o),0,1.7,0.3); };
+  const broken = !!c.broken, rootFirst = !!c.rootFirst;
+  const voice = (notes)=>{ let t0 = 0; if(rootFirst){ playNote(root,0,0.7,0.3); t0 = 0.85; }
+    if(broken){ notes.forEach((m,i)=>playNote(m, t0+i*0.5, 0.8, 0.3)); } else { playChord(notes, t0, 1.7, 0.3); } };
+  const play = ()=>voice(ms);
+  const playOpt = (id)=>{ const dd = CHORDS.find(x=>x.name===id); if(dd) voice(dd.off.map(o=>root+o)); };
   return {play, playOption:playOpt, options:c.types.map(x=>({id:x,label:x})), correct:t,
     info:'和弦 · 三和弦',
     explain:'这是一个「'+t+'和弦」'};
@@ -537,7 +540,10 @@ function renderPractice(tab){
   } else if(tab==='interval'){
     fields = fld('难度','<select id="p_iv"><option value="basic">基础·上行</option><option value="common">常用</option><option value="focus">专攻：小三/大六/小七</option><option value="m67">专攻：大六 vs 小七（二选一）</option><option value="all">全部</option></select>');
   } else if(tab==='chord'){
-    fields = fld('类型','<select id="p_ch"><option value="basic">大三 / 小三</option><option value="withAugDim">三和弦（含增、减）</option></select>');
+    fields = fld('类型','<select id="p_ch"><option value="basic">大三 / 小三</option><option value="withAugDim">三和弦（含增、减）</option></select>')+
+      fld('辅助（新手建议先开）',
+        '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:6px"><input type="checkbox" id="c_broken"> 分解听（一个音一个音弹）</label>'+
+        '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="c_rootfirst"> 先弹根音（给个参照）</label>');
   } else if(tab==='prog'){
     fields = fld('走向','<select id="p_pg"><option value="4">常见 4 种</option><option value="8">全部 8 种</option></select>')+
       fld('调','<select id="p_pt"><option value="fixed">固定 C</option><option value="random">随机调</option></select>');
@@ -551,7 +557,15 @@ function renderPractice(tab){
         '<option value="ch4">和弦 · 全部四种（含增三）</option>'+
         '<option value="iv67">音程 · 大六 vs 小七</option>'+
       '</select>');
-    fields = sel + '<div class="field"><label>掌握线</label><div style="font-size:14px;line-height:1.7">🎯 连续答对 <b>20</b> 题 → 判定为「<b>已掌握</b>」<br><span class="muted">答错一次，连击归零、重新来'+(best?('　·　历史最好：连对 '+best+' 题'):'')+'</span></div></div>';
+    const goalSel = fld('掌握线','<select id="p_goal">'+
+        '<option value="10">连对 10 题（先立信心）</option>'+
+        '<option value="15">连对 15 题</option>'+
+        '<option value="20">连对 20 题（严格）</option>'+
+      '</select>');
+    const chordOpt = fld('和弦辅助（仅练和弦时生效）',
+        '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:6px"><input type="checkbox" id="p_broken"> 分解听（一个音一个音弹）</label>'+
+        '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="p_rootfirst"> 先弹根音（给个参照）</label>');
+    fields = sel + goalSel + chordOpt + '<div class="muted" style="line-height:1.7">答错一次，连击归零、重新来'+(best?('　·　历史最好：连对 '+best+' 题'):'')+'</div>';
   }
   const tips = {degree:'听主和弦建立调，只听目标音是第几级。',interval:'先哼后选，感受两个音的距离。',drill:'专攻：选一个「两选一」死磕，连对 20 题算掌握。音程盯那半个音（大六 do→la 落地／小七 do→si♭ 悬）；和弦先抓「亮/暗」（大三亮、小三暗），再逐个加增减。',chord:'听三和弦的色彩：大=明亮，小=柔和，增=悬，减=紧张。',prog:'先听主和弦找 do，再听每个和弦落在第几级。',fret:'蓝点是 do，先数级数，再看指板绿色位置。'};
   const suffix = (tab==='drill') ? ' · 专项训练' : ' · 自由练习';
@@ -621,6 +635,7 @@ function startPractice(tab){
   } else if(tab==='chord'){
     const cv = g('p_ch').value;
     cfg.types = cv==='basic'?['大三','小三'] : ['大三','小三','增三','减三'];
+    cfg.broken = g('c_broken').checked; cfg.rootFirst = g('c_rootfirst').checked;
     label = '和弦 · '+cv;
   } else if(tab==='prog'){
     const n = g('p_pg').value==='4'?4:8;
@@ -632,12 +647,15 @@ function startPractice(tab){
     label = '找音 · '+(cfg.tonic==='random'?'随机调':'固定C');
   } else if(tab==='drill'){
     const dv = g('p_drill').value;
+    const bis = g('p_broken').checked, rfirst = g('p_rootfirst').checked;
     if(dv==='ch3'){ mode='chord'; cfg.types=['大三','小三','减三']; label='专攻 · 和弦（大三/小三/减三）'; }
     else if(dv==='ch4'){ mode='chord'; cfg.types=['大三','小三','增三','减三']; label='专攻 · 和弦（全部四种）'; }
     else if(dv==='iv67'){ mode='interval'; cfg.semis=[9,10]; label='专攻 · 音程 大六 vs 小七'; }
     else { mode='chord'; cfg.types=['大三','小三']; label='专攻 · 和弦 大三 vs 小三'; }
+    if(mode==='chord'){ cfg.broken = bis; cfg.rootFirst = rfirst; }
   }
-  const goal = (tab==='drill') ? 20 : 0;
+  let goal = 0;
+  if(tab==='drill'){ const gv = parseInt(g('p_goal').value,10); goal = (gv===10||gv===15||gv===20) ? gv : 20; }
   startSession(mode, cfg, 9999, 0, label, true, tab, goal);
 }
 async function copyText(txt, btn){
